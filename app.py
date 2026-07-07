@@ -29,12 +29,19 @@ Il tuo obiettivo è generare uno storyboard usando questa legenda rigida:
 Regola Fissa: Inizia sempre la risposta con una breve nota che spiega che i prompt sono in inglese per garantire la massima precisione dei motori AI. Non generare nient'altro fuori da questo schema.
 """
 
-# Inizializziamo il modello Gemini 1.5 Flash (veloce e supporta le istruzioni di sistema)
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash-latest",
-    system_instruction=istruzioni_regista
-)
-
+# Troviamo dinamicamente il modello corretto per la tua API Key
+try:
+    # Proviamo prima la versione Flash con il prefisso ufficiale
+    model = genai.GenerativeModel(
+        model_name="models/gemini-1.5-flash",
+        system_instruction=istruzioni_regista
+    )
+except Exception:
+    # Se fallisce, usiamo la versione Pro universale
+    model = genai.GenerativeModel(
+        model_name="models/gemini-1.5-pro",
+        system_instruction=istruzioni_regista
+    )
 # 4. L'INTERFACCIA UTENTE (Step 1 e Step 2)
 col1, col2 = st.columns(2)
 
