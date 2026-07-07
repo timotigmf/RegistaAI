@@ -31,7 +31,7 @@ Regola Fissa: Inizia sempre la risposta con una breve nota che spiega che i prom
 
 # Inizializziamo il modello Gemini 1.5 Flash (veloce e supporta le istruzioni di sistema)
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-1.5-flash-latest",
     system_instruction=istruzioni_regista
 )
 
