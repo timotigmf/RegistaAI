@@ -9,39 +9,24 @@ st.markdown("Crea la sceneggiatura, i prompt per **Canva** e la colonna sonora s
 st.markdown("---")
 
 # 2. CONFIGURAZIONE DELL'API DI GEMINI
-# In produzione su Streamlit Cloud, la chiave API verrà presa dai "Secrets" in modo sicuro.
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 except KeyError:
     st.warning("⚠️ Inserisci la tua chiave API di Gemini nei settings di Streamlit per far funzionare l'app.")
 
-# 3. LE ISTRUZIONI DI SISTEMA (La tua "Gemma" + Legenda)
-# Questo testo è il cervello dell'app, invisibile ai docenti ma letto dall'AI.
+# 3. LE ISTRUZIONI DI SISTEMA (La "Gemma" e la Legenda)
 istruzioni_regista = """
-Ruolo: Sei un Regista Multimediale e un Sound Designer esperto in didattica digitale.
-Il tuo obiettivo è generare uno storyboard usando questa legenda rigida:
-- V1, V2... = Vignetta / Scena e minutaggio stimato (es. [00:00 - 00:05] V1)
-- Prompt CANVA = Prompt in INGLESE per l'AI video (semplice e lineare), racchiuso in un blocco di codice markdown copiabile.
-- SFX = Fornisci 3 opzioni di keyword in INGLESE per gli effetti sonori. Per ogni opzione crea un link del tipo: https://pixabay.com/it/sound-effects/search/keyword_in_inglese/
+Ruolo: Sei un Regista Multimediale e un Sound Designer esperto in didattica digitale per la scuola.
+Il tuo obiettivo è generare uno storyboard usando questa legenda rigida per facilitare i docenti:
+- [Minutaggio] V1, V2... = Vignetta / Scena (es. [00:00 - 00:05] V1)
+- Prompt CANVA = Prompt esatto in INGLESE per l'AI video (semplice e lineare per evitare errori del motore), inserito ESCLUSIVAMENTE in un blocco di codice markdown copiabile.
+- SFX = Fornisci 3 opzioni di keyword in INGLESE per gli effetti sonori. Crea link diretti: https://pixabay.com/it/sound-effects/search/keyword_in_inglese/
 - DID/DIAL = Didascalia narrante in italiano.
-- NOTE/LAYOUT = Istruzioni di montaggio pratiche per la timeline.
+- NOTE/LAYOUT = Istruzioni pratiche di montaggio e variazioni rispetto alla gabbia standard (es. inquadrature e formati).
 
-Regola Fissa: Inizia sempre la risposta con una breve nota che spiega che i prompt sono in inglese per garantire la massima precisione dei motori AI. Non generare nient'altro fuori da questo schema.
+Regola Fissa: Inizia sempre con una nota per i docenti spiegando che i prompt visivi e di ricerca sono in inglese per garantire la massima precisione dei motori AI.
 """
 
-# Troviamo dinamicamente il modello corretto per la tua API Key
-try:
-    # Proviamo prima la versione Flash con il prefisso ufficiale
-    model = genai.GenerativeModel(
-        model_name="models/gemini-1.5-flash",
-        system_instruction=istruzioni_regista
-    )
-except Exception:
-    # Se fallisce, usiamo la versione Pro universale
-    model = genai.GenerativeModel(
-        model_name="models/gemini-1.5-pro",
-        system_instruction=istruzioni_regista
-    )
 # 4. L'INTERFACCIA UTENTE (Step 1 e Step 2)
 col1, col2 = st.columns(2)
 
@@ -60,21 +45,40 @@ with col2:
     )
 
 st.subheader("📚 3. Argomento della Lezione")
-argomento = st.text_area("Cosa vuoi spiegare in questo video?", placeholder="Es. Le regole del contrappunto, La struttura della cellula, La rivoluzione industriale...")
+argomento = st.text_area("Cosa vuoi spiegare in questo video?", placeholder="Es. L'evoluzione del pianoforte, Il ciclo dell'acqua, La rivoluzione industriale...")
 
 # 5. IL MOTORE DI GENERAZIONE (Step 3 e 4)
 if st.button("🚀 Genera Storyboard Completo", type="primary"):
     if argomento:
-        with st.spinner("Sto scrivendo la sceneggiatura e preparando i prompt visivi e sonori..."):
-            
-            # Uniamo le scelte dell'utente in un unico comando per Gemini
-            prompt_utente = f"Argomento: {argomento}\nTarget: {target}\nStile: {stile}\nGenera lo storyboard completo rispettando le regole."
-            
-            # Chiamata all'API
-            response = model.generate_content(prompt_utente)
-            
-            # Mostriamo il risultato a schermo
-            st.success("Storyboard generato con successo! Copia i prompt qui sotto.")
-            st.markdown(response.text)
+        with st.spinner("Sto analizzando il sistema e scrivendo la sceneggiatura..."):
+            try:
+                # IL RADAR: Cerchiamo il nome esatto del modello autorizzato sulla tua API Key
+                modello_corretto = "gemini-1.5-flash" # Nome di emergenza di base
+                for m in genai.list_models():
+                    if 'generateContent' in m.supported_generation_methods:
+                        if '1.5-flash' in m.name:
+                            modello_corretto = m.name
+                            break
+                
+                # Inizializziamo il modello con il nome esatto trovato dal radar
+                model = genai.GenerativeModel(
+                    model_name=modello_corretto,
+                    system_instruction=istruzioni_regista
+                )
+                
+                # Costruiamo la richiesta
+                prompt_utente = f"Argomento: {argomento}\nTarget: {target}\nStile: {stile}\nGenera lo storyboard completo."
+                
+                # Lanciamo la generazione
+                response = model.generate_content(prompt_utente)
+                
+                # Mostriamo il risultato
+                st.success(f"Storyboard generato con successo! (Motore agganciato: {modello_corretto})")
+                st.markdown(response.text)
+                
+            except Exception as e:
+                # In caso di errore, lo mostriamo a schermo in modo pulito
+                st.error(f"Errore durante l'elaborazione di Gemini: {e}")
+                st.info("Se continui a vedere errori, verifica che la tua API Key sia abilitata per i servizi Generative Language API nella console di Google AI Studio.")
     else:
         st.error("Per favore, scrivi l'argomento della lezione prima di procedere.")
