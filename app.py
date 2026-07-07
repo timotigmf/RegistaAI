@@ -1,5 +1,6 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 # 1. CONFIGURAZIONE DELLA PAGINA E GRAFICA DI BASE
 st.set_page_config(page_title="Regista AI per Docenti", page_icon="🎬", layout="wide")
@@ -8,13 +9,7 @@ st.title("🎬 Il Regista Multimediale per Docenti")
 st.markdown("Crea la sceneggiatura, i prompt per **Canva** e la colonna sonora su **Pixabay** in pochi clic.")
 st.markdown("---")
 
-# 2. CONFIGURAZIONE DELL'API DI GEMINI
-try:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-except KeyError:
-    st.warning("⚠️ Inserisci la tua chiave API di Gemini nei settings di Streamlit per far funzionare l'app.")
-
-# 3. LE ISTRUZIONI DI SISTEMA (La "Gemma" e la Legenda)
+# 2. LE ISTRUZIONI DI SISTEMA (La tua "Gemma" + Legenda)
 istruzioni_regista = """
 Ruolo: Sei un Regista Multimediale e un Sound Designer esperto in didattica digitale per la scuola.
 Il tuo obiettivo è generare uno storyboard usando questa legenda rigida per facilitare i docenti:
@@ -27,7 +22,7 @@ Il tuo obiettivo è generare uno storyboard usando questa legenda rigida per fac
 Regola Fissa: Inizia sempre con una nota per i docenti spiegando che i prompt visivi e di ricerca sono in inglese per garantire la massima precisione dei motori AI.
 """
 
-# 4. L'INTERFACCIA UTENTE (Step 1 e Step 2)
+# 3. L'INTERFACCIA UTENTE (Step 1 e Step 2)
 col1, col2 = st.columns(2)
 
 with col1:
@@ -47,38 +42,34 @@ with col2:
 st.subheader("📚 3. Argomento della Lezione")
 argomento = st.text_area("Cosa vuoi spiegare in questo video?", placeholder="Es. L'evoluzione del pianoforte, Il ciclo dell'acqua, La rivoluzione industriale...")
 
-# 5. IL MOTORE DI GENERAZIONE (Step 3 e 4)
+# 4. IL MOTORE DI GENERAZIONE (Nuova Libreria Ufficiale)
 if st.button("🚀 Genera Storyboard Completo", type="primary"):
     if argomento:
-        with st.spinner("Sto analizzando il sistema e scrivendo la sceneggiatura..."):
+        with st.spinner("Connessione al nuovo motore Gemini in corso..."):
             try:
-                # IL RADAR: Cerchiamo il nome esatto del modello autorizzato sulla tua API Key
-                modello_corretto = "gemini-1.5-flash" # Nome di emergenza di base
-                for m in genai.list_models():
-                    if 'generateContent' in m.supported_generation_methods:
-                        if '1.5-flash' in m.name:
-                            modello_corretto = m.name
-                            break
+                # Inizializziamo il client ufficiale richiamando la chiave nascosta
+                client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
                 
-                # Inizializziamo il modello con il nome esatto trovato dal radar
-                model = genai.GenerativeModel(
-                    model_name=modello_corretto,
-                    system_instruction=istruzioni_regista
-                )
-                
-                # Costruiamo la richiesta
+                # Costruiamo la richiesta unendo le scelte dell'utente
                 prompt_utente = f"Argomento: {argomento}\nTarget: {target}\nStile: {stile}\nGenera lo storyboard completo."
                 
-                # Lanciamo la generazione
-                response = model.generate_content(prompt_utente)
+                # Lanciamo la generazione con la nuova sintassi
+                response = client.models.generate_content(
+                    model='gemini-2.0-flash', 
+                    contents=prompt_utente,
+                    config=types.GenerateContentConfig(
+                        system_instruction=istruzioni_regista,
+                        temperature=0.7
+                    )
+                )
                 
-                # Mostriamo il risultato
-                st.success(f"Storyboard generato con successo! (Motore agganciato: {modello_corretto})")
+                # Mostriamo il risultato a schermo
+                st.success("Storyboard generato con successo!")
                 st.markdown(response.text)
                 
+            except KeyError:
+                st.error("⚠️ Chiave API non trovata! Assicurati di aver incollato la chiave nei 'Secrets' di Streamlit.")
             except Exception as e:
-                # In caso di errore, lo mostriamo a schermo in modo pulito
                 st.error(f"Errore durante l'elaborazione di Gemini: {e}")
-                st.info("Se continui a vedere errori, verifica che la tua API Key sia abilitata per i servizi Generative Language API nella console di Google AI Studio.")
     else:
         st.error("Per favore, scrivi l'argomento della lezione prima di procedere.")
